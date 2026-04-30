@@ -1,11 +1,17 @@
 # Changelog
 
+## Version: 0.1.0
+### Date: 
+30/04/2026
+### Descriptions: 
+- Add FolderCleaning class to lib_FileTracker.
+
 ## Version: 0.0.4
 ### Date: 
 21/04/2026
 ### Descriptions: 
-- Split lib_FileTracker out from lib_Database
-- Add backup_by_date for FileTracker
+- Split lib_FileTracker out from lib_Database.
+- Add backup_by_date for FileTracker.
 
 ## Version: 0.0.3
 ### Date: 

@@ -1,8 +1,10 @@
 from pathlib import Path
+from datetime import datetime, timedelta
 from enum import IntEnum
 import pandas as pd
 
 from myStandard_Library.lib_ContextLogger import ContextLogger
+from myStandard_Library.lib_Common import get_current_dir, load_yaml_file, yaml_get_var
 
 # enum class for modified status
 class ModifiedStatus(IntEnum):
@@ -189,6 +191,97 @@ class FileTracker:
         else:
             self._logger.warning2("Backup By Date", f"File has been modified during backup process, skipping replace {latest_date}: {self._file_path}")
 
+
+# -----------------------------------------------------------------------------------
+# Folder cleaning
+# -----------------------------------------------------------------------------------
+# need FOLDER_CLEANING_LIST and FOLDER_CLEANING_FREQUENCY in config.yaml
+class FolderCleaning:
+    def __init__(self, logger: ContextLogger, 
+                 root_dir: Path, 
+                 exclude_root_folder: bool = True,
+                 shelf_life_days: int = 30,
+                 machine_label: str | None = None):
+        context = "Folder Cleaning"
+        self._logger = logger
+        self._root_dir = root_dir
+        self._exclude_root_folder = exclude_root_folder
+        self._machine_label = machine_label
+        self._cleaning_tracker = None
+        self._shelf_life_days = shelf_life_days
+
+        if self._machine_label is not None and self._machine_label != "":
+            self._context = self._machine_label.lower() + "_" + context
+        else:
+            self._context = context
+
+        frequency_list = ["HOURLY", "DAILY", "WEEKLY", "MONTHLY"]
+
+        YAML_CONFIG = load_yaml_file(root_dir, "config.yaml")
+        self._folder_cleaning_list = yaml_get_var(YAML_CONFIG, "GLOBAL", "GENERAL", "FOLDER_CLEANING_LIST", logger=logger)
+        self._folder_cleaning_frequency = yaml_get_var(YAML_CONFIG, "GLOBAL", "GENERAL", "FOLDER_CLEANING_FREQUENCY", logger=logger)
+        self._folder_cleaning_frequency = self._folder_cleaning_frequency.upper()
+
+        # sanity check for frequency
+        if self._folder_cleaning_frequency not in frequency_list:
+            logger.error2(context, f"Invalid frequency: {self._folder_cleaning_frequency}")
+            logger.error2(context, f"Valid frequency options are: {frequency_list}")
+            raise ValueError(f"Invalid frequency {self._folder_cleaning_frequency}")
+
+        # sanity check for folder_list
+        for folder in self._folder_cleaning_list:
+            if not Path(folder).is_dir():
+                logger.error2(context, f"Invalid folder path: {folder}")
+                raise OSError(f"Invalid folder path: {folder}")
+            
+            if exclude_root_folder and Path(folder) == root_dir:
+                logger.warning2(context, f"Root folder is included in folder list: {folder}.")
+                logger.warning2(context, f"Either remove it from folder_list or set exclude_root_folder to False.")
+
+
+    def get_current_cleaning_value(self) -> int:
+        timestamp_now = datetime.now()  
+        if self._folder_cleaning_frequency == "HOURLY":
+            return int(timestamp_now.strftime("%H"))
+        elif self._folder_cleaning_frequency == "DAILY":
+            return int(timestamp_now.strftime("%d"))
+        elif self._folder_cleaning_frequency == "WEEKLY":
+            return int(timestamp_now.strftime("%U"))
+        elif self._folder_cleaning_frequency == "MONTHLY":
+            return int(timestamp_now.strftime("%m"))
+
+
+    # check if cleaning is needed based on frequency and last cleaning time
+    def check_cleaning_needed(self) -> bool:
+        current_value = self.get_current_cleaning_value()
+        if current_value != self._cleaning_tracker:
+            self._logger.debug2(self._context, f"Cleaning needed. Current {self._folder_cleaning_frequency} value: {current_value}, Last cleaned value: {self._cleaning_tracker}")
+            return True
+        else:
+            return False
+        
+
+    def delete_old_files(self) -> None: 
+        for folder in self._folder_cleaning_list:
+            folder_path = Path(folder)
+            # safety line. exclude root folder if specified.
+            if self._exclude_root_folder and folder_path == self._root_dir:
+                continue
+            for file in folder_path.iterdir():
+                if file.is_file():
+                    file_mtime = datetime.fromtimestamp(file.stat().st_mtime)
+                    if datetime.now() - file_mtime > timedelta(days=self._shelf_life_days):
+                        try:
+                            file.unlink()
+                            self._logger.info2(self._context, f"Deleted file: {file}")
+                        except Exception as e:
+                            self._logger.error2(self._context, f"Failed to delete file: {file}. Error: {e}")
+        self._cleaning_tracker = self.get_current_cleaning_value()
+    
+
+    def main_cleaning_process(self) -> None: 
+        if self.check_cleaning_needed(): 
+            self.delete_old_files()
 
 
 
