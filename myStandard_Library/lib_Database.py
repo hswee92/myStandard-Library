@@ -436,7 +436,7 @@ def create_table_add_column(db_handler: SQLDatabase,
     
     if not db_handler.validate_table(db_table):
         db_handler.create_table(dict_sql_format, table_name=db_table, primary_key=primary_key)
-        logger.info2("SQLDatabase", f"Table '{db_table}' created.")
+        # logger.info2("SQLDatabase", f"Table '{db_table}' created.")
 
     else: 
         sql_columns = db_handler.get_columns(db_table)
