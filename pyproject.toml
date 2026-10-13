@@ -4,7 +4,14 @@ version = "0.1.0"
 description = "Standard library to be used in multiple projects."
 requires-python = ">=3.10"
 authors = [{name="HS Wee"}]
-dependencies = ["pandas"]
+dependencies = [
+    "pandas",
+    "psutil",
+    "psycopg[binary]>=3.1,<4",
+    "PyMySQL",
+    "PyYAML",
+    "python-dotenv",
+]
 
 [build-system]
 requires = ["setuptools"]
