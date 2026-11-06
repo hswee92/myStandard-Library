@@ -1,5 +1,11 @@
 # Changelog
 
+## Version: 0.1.1
+### Date:
+06/11/2026
+### Descriptions:
+- Add verbose to lib_Common.os_get_env: 0 confirms loading without the value (default); 1 includes the value in console output and supplied logger output.
+
 ## Version: 0.1.0
 ### Date: 
 30/04/2026

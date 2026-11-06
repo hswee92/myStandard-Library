@@ -87,13 +87,25 @@ def load_dotenv_file(env_dir: Path, name_with_suffix: str = ".env") -> Path:
 # -----------------------------------------------------------------------------------
 # Load environment variables from system
 # -----------------------------------------------------------------------------------
-def os_get_env(variable_name: str, logger: ContextLogger | None = None):
+def os_get_env(variable_name: str, logger: ContextLogger | None = None, verbose: int = 0):
+    """Return an environment value, reporting its name and optionally its value.
+
+    verbose=0 confirms loading without revealing the value (default).
+    verbose=1 includes the value. A supplied logger handles console and file
+    output; otherwise the message is printed.
+    """
+    if verbose not in (0, 1):
+        raise ValueError("verbose must be 0 or 1")
+
     variable = os.getenv(variable_name)
     if variable is not None:
+        message = f"Loaded -> {variable_name}"
+        if verbose == 1:
+            message += f" : {variable}"
         if logger is not None:
-            logger.info2("Dotenv", f"Loaded -> {variable_name} : {variable}")
+            logger.info2("Dotenv", message)
         else:
-            print(f"Loaded -> {variable_name} : {variable}")
+            print(message)
         return variable
     else:
         if logger is not None:
